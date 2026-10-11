@@ -1,0 +1,9 @@
+name: C and OpenMP validation
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile with warnings and run independent CPU checks
+        run: make validate-cpu

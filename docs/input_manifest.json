@@ -1,0 +1,42 @@
+{
+  "task1/data/WordOccurrenceDataset.txt": {
+    "bytes": 1048138,
+    "sha256": "29519272453e97d337cf6f34086f939d8af9358832daddaebb5df5f6f7ffc74c"
+  },
+  "task2/data/MatData.txt": {
+    "bytes": 24181,
+    "sha256": "8b37ae49bfd736db461e68d72b1479e27ec961dc92c84f1437937483f5874721"
+  },
+  "task3/data/passwords.txt": {
+    "bytes": 120000,
+    "sha256": "09eeac2dd37c64ed24a2b849c79a7292f8660c9b3bbe0075bd0cf213d2e5e132"
+  },
+  "task4/data/4x4.png": {
+    "bytes": 140,
+    "sha256": "6c6967dff302bae28b51f1a8175eacb454ed70778b3426d143a5ee07b5344a1e"
+  },
+  "task4/data/6x4.png": {
+    "bytes": 148,
+    "sha256": "82121ab5817eff00375e7bfed48b94d9d186321a8320bc7d79910744f3fffa9c"
+  },
+  "task4/data/building.png": {
+    "bytes": 2366,
+    "sha256": "c9b77b4d36a3bab9e7f0251ad8ccb393a0c8ef579b7fa450602db71a1d526fa0"
+  },
+  "task4/data/partial_block.png": {
+    "bytes": 136,
+    "sha256": "4944eba0193018a258704a50921aa5e3f908e28c0e4630e1609667804f1bd954"
+  },
+  "task4/data/thin.png": {
+    "bytes": 74,
+    "sha256": "b568aedefa6ba991f6d9b9491487b5a98e4de7d9716b365ff3f5efc29efea871"
+  },
+  "task4/data/tiny.png": {
+    "bytes": 70,
+    "sha256": "c2153f77e11087fcb078ae38527fa83bef29791e3700e30cc87fec4405a66d0f"
+  },
+  "validation/passwords_expected.txt": {
+    "bytes": 60000,
+    "sha256": "7c11f97136d0c8be89b3ba0c4335ed064336ee7e3eafc153ebc12c79c7b7f7b3"
+  }
+}

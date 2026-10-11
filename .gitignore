@@ -4,3 +4,15 @@
 *.ptx
 *.cubin
 *.fatbin
+*.o
+*.exe
+__pycache__/
+task1/word_count
+task2/matrix_operations
+task3/password_cracking
+task4/sobel
+task1/result.txt
+task2/results.txt
+task3/decrypted.txt
+task4/edges/
+*.mp4
