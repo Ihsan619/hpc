@@ -16,3 +16,5 @@ task2/results.txt
 task3/decrypted.txt
 task4/edges/
 *.mp4
+submission/
+evidence/*_recording_check.png
