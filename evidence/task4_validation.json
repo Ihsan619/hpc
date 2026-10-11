@@ -1,0 +1,121 @@
+{
+  "task": "task4",
+  "passed": true,
+  "checks": 8,
+  "runs": [
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/edges",
+        "/content/hpc_4f665955aaa0/task4/data/4x4.png",
+        "/content/hpc_4f665955aaa0/task4/data/6x4.png",
+        "/content/hpc_4f665955aaa0/task4/data/bird.png",
+        "/content/hpc_4f665955aaa0/task4/data/partial_block.png",
+        "/content/hpc_4f665955aaa0/task4/data/thin.png",
+        "/content/hpc_4f665955aaa0/task4/data/tiny.png"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.5446889449999617,
+      "stdout": "4x4.png: 4 x 4 | Blocks: 1 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.104 ms | Transfers + kernel: 0.000159 s | Decode-to-encode: 0.284109 s\n  Output: /tmp/hpc_validation_6ppi_z10/edges/sobel_4x4.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_x_4x4.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_y_4x4.png\n6x4.png: 6 x 4 | Blocks: 1 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.012 ms | Transfers + kernel: 0.000044 s | Decode-to-encode: 0.000400 s\n  Output: /tmp/hpc_validation_6ppi_z10/edges/sobel_6x4.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_x_6x4.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_y_6x4.png\nbird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.032 ms | Transfers + kernel: 0.002338 s | Decode-to-encode: 0.104093 s\n  Output: /tmp/hpc_validation_6ppi_z10/edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_y_bird.png\npartial_block.png: 17 x 19 | Blocks: 2 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.021 ms | Transfers + kernel: 0.000072 s | Decode-to-encode: 0.001185 s\n  Output: /tmp/hpc_validation_6ppi_z10/edges/sobel_partial_block.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_x_partial_block.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_y_partial_block.png\nthin.png: 1 x 7 | Blocks: 1 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.026 ms | Transfers + kernel: 0.000059 s | Decode-to-encode: 0.000417 s\n  Output: /tmp/hpc_validation_6ppi_z10/edges/sobel_thin.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_x_thin.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_y_thin.png\ntiny.png: 1 x 1 | Blocks: 1 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.021 ms | Transfers + kernel: 0.000052 s | Decode-to-encode: 0.000328 s\n  Output: /tmp/hpc_validation_6ppi_z10/edges/sobel_tiny.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_x_tiny.png\n  Output: /tmp/hpc_validation_6ppi_z10/edges/gradient_y_tiny.png\nImages completed: 6/6\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/edges",
+        "/tmp/hpc_validation_6ppi_z10/missing.png"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.0027365810001356294,
+      "stdout": "Images completed: 0/1\n",
+      "stderr": "/tmp/hpc_validation_6ppi_z10/missing.png: PNG decode 78 (failed to open file for reading)\n"
+    },
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/edges",
+        "/content/hpc_4f665955aaa0/task4/data/4x4.png",
+        "/content/hpc_4f665955aaa0/task4/data/4x4.png"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.002436601999988852,
+      "stdout": "",
+      "stderr": "Duplicate image basename: 4x4.png\n"
+    },
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/edges",
+        "/tmp/hpc_validation_6ppi_z10/broken.png"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.002156364000029498,
+      "stdout": "Images completed: 0/1\n",
+      "stderr": "/tmp/hpc_validation_6ppi_z10/broken.png: PNG decode 27 (PNG file is smaller than a PNG header)\n"
+    },
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/bench_edges",
+        "/content/hpc_4f665955aaa0/task4/data/bird.png"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.4352864459999637,
+      "stdout": "bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.075 ms | Transfers + kernel: 0.002670 s | Decode-to-encode: 0.329227 s\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_y_bird.png\nImages completed: 1/1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/bench_edges",
+        "/content/hpc_4f665955aaa0/task4/data/bird.png"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.5088287379999201,
+      "stdout": "bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.111 ms | Transfers + kernel: 0.002892 s | Decode-to-encode: 0.353751 s\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_y_bird.png\nImages completed: 1/1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/bench_edges",
+        "/content/hpc_4f665955aaa0/task4/data/bird.png"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.5508259900000212,
+      "stdout": "bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.104 ms | Transfers + kernel: 0.002772 s | Decode-to-encode: 0.396073 s\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_y_bird.png\nImages completed: 1/1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/content/hpc_4f665955aaa0/task4/sobel",
+        "/tmp/hpc_validation_6ppi_z10/bench_edges",
+        "/content/hpc_4f665955aaa0/task4/data/bird.png"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.5394987470001524,
+      "stdout": "bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.115 ms | Transfers + kernel: 0.002987 s | Decode-to-encode: 0.384171 s\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_y_bird.png\nImages completed: 1/1\n",
+      "stderr": ""
+    }
+  ],
+  "benchmark_trials": [
+    {
+      "threads": null,
+      "trial": 1,
+      "process_wall_seconds": 0.5088287379999201,
+      "stdout": "bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.111 ms | Transfers + kernel: 0.002892 s | Decode-to-encode: 0.353751 s\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_y_bird.png\nImages completed: 1/1\n"
+    },
+    {
+      "threads": null,
+      "trial": 2,
+      "process_wall_seconds": 0.5508259900000212,
+      "stdout": "bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.104 ms | Transfers + kernel: 0.002772 s | Decode-to-encode: 0.396073 s\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_y_bird.png\nImages completed: 1/1\n"
+    },
+    {
+      "threads": null,
+      "trial": 3,
+      "process_wall_seconds": 0.5394987470001524,
+      "stdout": "bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256\n  GPU: Tesla T4 | Kernel: 0.115 ms | Transfers + kernel: 0.002987 s | Decode-to-encode: 0.384171 s\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/sobel_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_x_bird.png\n  Output: /tmp/hpc_validation_6ppi_z10/bench_edges/gradient_y_bird.png\nImages completed: 1/1\n"
+    }
+  ]
+}

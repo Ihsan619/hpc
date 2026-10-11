@@ -1,0 +1,31 @@
+4x4.png: 4 x 4 | Blocks: 1 | Threads/block: 256
+  GPU: Tesla T4 | Kernel: 0.130 ms | Transfers + kernel: 0.000245 s | Decode-to-encode: 0.278530 s
+  Output: edges/sobel_4x4.png
+  Output: edges/gradient_x_4x4.png
+  Output: edges/gradient_y_4x4.png
+6x4.png: 6 x 4 | Blocks: 1 | Threads/block: 256
+  GPU: Tesla T4 | Kernel: 0.016 ms | Transfers + kernel: 0.000057 s | Decode-to-encode: 0.000653 s
+  Output: edges/sobel_6x4.png
+  Output: edges/gradient_x_6x4.png
+  Output: edges/gradient_y_6x4.png
+bird.png: 500 x 500 | Blocks: 977 | Threads/block: 256
+  GPU: Tesla T4 | Kernel: 0.040 ms | Transfers + kernel: 0.002410 s | Decode-to-encode: 0.111628 s
+  Output: edges/sobel_bird.png
+  Output: edges/gradient_x_bird.png
+  Output: edges/gradient_y_bird.png
+partial_block.png: 17 x 19 | Blocks: 2 | Threads/block: 256
+  GPU: Tesla T4 | Kernel: 0.017 ms | Transfers + kernel: 0.000062 s | Decode-to-encode: 0.001751 s
+  Output: edges/sobel_partial_block.png
+  Output: edges/gradient_x_partial_block.png
+  Output: edges/gradient_y_partial_block.png
+thin.png: 1 x 7 | Blocks: 1 | Threads/block: 256
+  GPU: Tesla T4 | Kernel: 0.014 ms | Transfers + kernel: 0.000054 s | Decode-to-encode: 0.000675 s
+  Output: edges/sobel_thin.png
+  Output: edges/gradient_x_thin.png
+  Output: edges/gradient_y_thin.png
+tiny.png: 1 x 1 | Blocks: 1 | Threads/block: 256
+  GPU: Tesla T4 | Kernel: 0.014 ms | Transfers + kernel: 0.000051 s | Decode-to-encode: 0.000597 s
+  Output: edges/sobel_tiny.png
+  Output: edges/gradient_x_tiny.png
+  Output: edges/gradient_y_tiny.png
+Images completed: 6/6

@@ -51,13 +51,13 @@ The seeded dataset contains 10,000 entries with known plaintexts and deliberate 
 
 ## Task 4 CUDA Sobel filtering
 
-LodePNG decodes each input to RGBA. A GPU thread computes one output pixel using the horizontal and vertical 3 by 3 Sobel masks. Neighbours outside the image are zero. Grayscale is the integer average of the three colour channels. The magnitude is sqrt(Gx squared plus Gy squared), rounded to the nearest integer and clamped to 255. The original alpha channel is preserved. These choices are explicit so the reference calculation and visual result are reproducible.
+LodePNG decodes inputs to RGBA. One CUDA thread computes a pixel with zero-padded 3 by 3 Sobel masks and integer-average RGB grayscale. Signed Gx and Gy produce the rounded Euclidean magnitude. The kernel also saves absolute X and Y gradients, each clipped to 255. All three outputs preserve alpha and image dimensions.
 
-Images are processed sequentially on the host while their pixels are processed in parallel on the GPU. Each image receives a dynamically sized allocation and launch. Output names are sobel_ followed by the original basename. Duplicate basenames are rejected to avoid overwriting another image's output. Decoded buffers, output buffers, device allocations and CUDA events are released after each image.
+Three output planes are allocated and copied back. Output prefixes are sobel_, gradient_x_ and gradient_y_. Images are processed sequentially on the host, with independent pixels processed in parallel on the GPU. Duplicate basenames and allocation errors are checked; resources are released after each image.
 
-The test set includes the lecturer's 4 by 4 and 6 by 4 images, a procedural 512 by 384 building image, a 17 by 19 image exercising a partial block, a 1 by 7 image and a 1 by 1 image. Independent NumPy calculations compared every RGBA pixel, including all borders. All six images passed, and missing or corrupt input cases were checked.
+The user-supplied 500 by 500 bird.png replaces the building demonstration. The six-image batch also contains the supplied 4 by 4 and 6 by 4 images, a 17 by 19 partial-block image, a 1 by 7 image and a 1 by 1 image. Independent NumPy checks compared every RGBA pixel in all three outputs, including borders and alpha. All passed, along with invalid-input checks. The notebook displays the original, X gradient, Y gradient and combined Sobel output in a two-by-two figure.
 
-An initial T4 verification of the larger image used 768 blocks of 256 threads. In three separate-process trials the kernel took 0.074, 0.076 and 0.063 milliseconds; process times were 0.284711, 0.285426 and 0.273414 seconds. For this image, context creation, PNG conversion and transfers dominate overall execution. A faster kernel alone therefore would not produce a similar improvement in total time. Shared-memory tiling is a possible extension, but the submitted implementation follows the lecturer's global-memory and linear-indexing approach.
+The recorded bird run on a Tesla T4 used 977 blocks of 256 threads. Kernel time was 0.040 milliseconds, transfers plus kernel 0.002410 seconds and decode-to-encode time 0.111628 seconds. Three whole-process trials took 0.508829, 0.550826 and 0.539499 seconds, with a median of 0.539499 seconds. These scopes differ; context startup and PNG encoding dominate overall time. The implementation follows the lecturer's global-memory and linear-indexing approach.
 
 ## Validation and evidence
 
