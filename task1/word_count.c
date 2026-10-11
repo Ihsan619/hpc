@@ -1,4 +1,4 @@
-/* 6CS005 Task 1: dynamic byte slices, private counts, and a joined merge.
+/* 6CS005 Task 1: dynamic byte slices, private sorted arrays, and a joined merge.
  * Usage: ./word_count WordOccurrenceDataset.txt 4
  * Words are maximal ASCII alphanumeric runs, compared case-insensitively.
  */
@@ -12,9 +12,8 @@
 #include <string.h>
 #include <time.h>
 
-#define BUCKETS 4096
-typedef struct Word { char *text; size_t count; struct Word *next; } Word;
-typedef struct { Word *bucket[BUCKETS]; size_t tokens, unique; } Counts;
+typedef struct { char *text; size_t count; } Word;
+typedef struct { Word *items; size_t used, capacity, tokens; } Counts;
 typedef struct {
     const unsigned char *data;
     size_t length, next, slice;
@@ -26,30 +25,36 @@ static int word_char(unsigned char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
            (c >= '0' && c <= '9');
 }
-static size_t hash_word(const char *s) {
-    size_t h = 5381;
-    while (*s) h = h * 33 + (unsigned char)*s++;
-    return h % BUCKETS;
+static int alphabetical(const void *a, const void *b) {
+    return strcmp(((const Word *)a)->text, ((const Word *)b)->text);
 }
-static int add_count(Counts *counts, const char *text, size_t number) {
-    size_t h = hash_word(text);
-    for (Word *w = counts->bucket[h]; w; w = w->next) {
-        if (!strcmp(w->text, text)) { w->count += number; counts->tokens += number; return 1; }
+static int append_word(Counts *counts, char *word, size_t number) {
+    if (counts->used == counts->capacity) {
+        size_t next = counts->capacity ? counts->capacity * 2 : 256;
+        if (next < counts->capacity || next > SIZE_MAX / sizeof(Word)) return 0;
+        Word *larger = realloc(counts->items, next * sizeof(Word));
+        if (!larger) return 0;
+        counts->items = larger; counts->capacity = next;
     }
-    Word *w = malloc(sizeof(*w));
-    if (!w) return 0;
-    w->text = strdup(text);
-    if (!w->text) { free(w); return 0; }
-    w->count = number;
-    w->next = counts->bucket[h]; counts->bucket[h] = w;
-    counts->unique++; counts->tokens += number;
+    counts->items[counts->used++] = (Word){word, number};
+    counts->tokens += number;
     return 1;
 }
-static void release_counts(Counts *counts) {
-    for (size_t h = 0; h < BUCKETS; h++) {
-        Word *w = counts->bucket[h];
-        while (w) { Word *next = w->next; free(w->text); free(w); w = next; }
+static void combine_duplicates(Counts *counts) {
+    if (!counts->used) return;
+    qsort(counts->items, counts->used, sizeof(Word), alphabetical);
+    size_t unique = 0;
+    for (size_t i = 0; i < counts->used; i++) {
+        if (unique && !strcmp(counts->items[unique-1].text, counts->items[i].text)) {
+            counts->items[unique-1].count += counts->items[i].count;
+            free(counts->items[i].text);
+        } else counts->items[unique++] = counts->items[i];
     }
+    counts->used = unique;
+}
+static void release_counts(Counts *counts) {
+    for (size_t i = 0; i < counts->used; i++) free(counts->items[i].text);
+    free(counts->items);
 }
 static void *count_slice(void *argument) {
     Worker *worker = argument;
@@ -77,15 +82,13 @@ static void *count_slice(void *argument) {
             if (!word) { worker->failed = 1; return NULL; }
             for (size_t j = 0; j < length; j++) word[j] = (char)tolower(work->data[start+j]);
             word[length] = '\0';
-            int ok = add_count(&worker->counts, word, 1);
-            free(word);
-            if (!ok) { worker->failed = 1; return NULL; }
+            if (!append_word(&worker->counts, word, 1)) {
+                free(word); worker->failed = 1; return NULL;
+            }
         }
     }
+    combine_duplicates(&worker->counts);
     return NULL;
-}
-static int alphabetical(const void *a, const void *b) {
-    return strcmp((*(Word *const *)a)->text, (*(Word *const *)b)->text);
 }
 static double now(void) {
     struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -138,36 +141,32 @@ int main(int argc, char **argv) {
         if (workers[i].failed) failed = 1;
     }
     Counts merged = {0};
-    if (!failed) for (size_t i = 0; i < created; i++) {
-        for (size_t h = 0; h < BUCKETS; h++) for (Word *w = workers[i].counts.bucket[h]; w; w = w->next)
-            if (!add_count(&merged, w->text, w->count)) failed = 1;
-    }
-    double elapsed = now() - start;
-    Word **ordered = NULL;
-    if (!failed && merged.unique) {
-        ordered = malloc(merged.unique * sizeof(*ordered));
-        if (!ordered) failed = 1;
-        else {
-            size_t index = 0;
-            for (size_t h = 0; h < BUCKETS; h++) for (Word *w = merged.bucket[h]; w; w = w->next) ordered[index++] = w;
-            qsort(ordered, merged.unique, sizeof(*ordered), alphabetical);
+    if (!failed) for (size_t i = 0; i < created && !failed; i++) {
+        for (size_t j = 0; j < workers[i].counts.used; j++) {
+            Word *word = &workers[i].counts.items[j];
+            char *copy = strdup(word->text);
+            if (!copy || !append_word(&merged, copy, word->count)) {
+                free(copy); failed = 1; break;
+            }
         }
     }
+    if (!failed) combine_duplicates(&merged);
+    double elapsed = now() - start;
     if (!failed) {
         FILE *output = fopen("result.txt", "w");
         if (!output) { perror("result.txt"); failed = 1; }
         else {
-            for (size_t i = 0; i < merged.unique; i++)
-                if (fprintf(output, "%s %zu\n", ordered[i]->text, ordered[i]->count) < 0) failed = 1;
+            for (size_t i = 0; i < merged.used; i++)
+                if (fprintf(output, "%s %zu\n", merged.items[i].text, merged.items[i].count) < 0) failed = 1;
             if (fclose(output)) failed = 1;
         }
     }
     if (!failed) {
-        printf("Tokens: %zu | Unique: %zu | Threads: %zu | Count and merge: %.6f s\n", merged.tokens, merged.unique, created, elapsed);
+        printf("Tokens: %zu | Unique: %zu | Threads: %zu | Count and merge: %.6f s\n", merged.tokens, merged.used, created, elapsed);
         for (size_t i = 0; i < created; i++) printf("Worker %zu: %zu slices, %zu tokens\n", i, workers[i].slices, workers[i].counts.tokens);
         printf("Output: result.txt (alphabetical)\n");
     } else fprintf(stderr, "Word counting failed; output is not a verified result.\n");
-    free(ordered); release_counts(&merged);
+    release_counts(&merged);
     for (size_t i = 0; i < thread_count; i++) release_counts(&workers[i].counts);
     pthread_mutex_destroy(&work.lock); free(workers); free(threads); free(data);
     return failed ? 1 : 0;

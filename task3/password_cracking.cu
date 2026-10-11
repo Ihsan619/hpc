@@ -1,5 +1,5 @@
 /* 6CS005 Task 3. Usage: ./password_cracking passwords.txt
- * One GPU thread searches the 26*26*10*10 candidates for one encrypted line.
+ * One GPU thread uses nested letter/digit loops for one encrypted line.
  * The transform is copied from the lecturer's CryptForCuda.c, without changing
  * the boundary rules. Each invocation writes to a private buffer.
  */
@@ -10,9 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-typedef struct { char text[11]; } Encrypted;
-typedef struct { char text[5]; } Plain;
 
 __host__ __device__ void cudaCrypt(const char *raw, char *encrypted) {
     encrypted[0] = raw[0] + 2; encrypted[1] = raw[0] - 2; encrypted[2] = raw[0] + 1;
@@ -29,22 +26,36 @@ __host__ __device__ void cudaCrypt(const char *raw, char *encrypted) {
         }
     }
 }
-__global__ void crackPasswords(const Encrypted *input, Plain *output, size_t count) {
+__device__ int same_characters(const char *left, const char *right, int count) {
+    for (int i = 0; i < count; i++) if (left[i] != right[i]) return 0;
+    return 1;
+}
+__global__ void crackPasswords(const char *input, char *output, int *found, size_t count) {
     size_t index = (size_t)blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= count) return;
-    char raw[5] = {0}, encrypted[11];
-    output[index].text[0] = '\0';
-    for (int candidate = 0; candidate < 67600; candidate++) {
-        raw[0] = 'a' + candidate / 2600;
-        raw[1] = 'a' + candidate / 100 % 26;
-        raw[2] = '0' + candidate / 10 % 10;
-        raw[3] = '0' + candidate % 10;
-        cudaCrypt(raw, encrypted);
-        int equal = 1;
-        for (int i = 0; i < 10; i++) if (encrypted[i] != input[index].text[i]) { equal = 0; break; }
-        if (equal) {
-            for (int i = 0; i < 5; i++) output[index].text[i] = raw[i];
-            return;
+    const char *target = input + index * 11;
+    char raw[5] = {'a', 'a', '0', '0', '\0'}, encrypted[11];
+    found[index] = 0;
+    for (int i = 0; i < 5; i++) output[index*5+i] = '\0';
+    for (int first = 0; first < 26; first++) {
+        raw[0] = (char)('a' + first);
+        for (int second = 0; second < 26; second++) {
+            raw[1] = (char)('a' + second);
+            cudaCrypt(raw, encrypted);
+            /* The first six cipher characters depend only on the letters. */
+            if (!same_characters(encrypted, target, 6)) continue;
+            for (int tens = 0; tens < 10; tens++) {
+                raw[2] = (char)('0' + tens);
+                for (int units = 0; units < 10; units++) {
+                    raw[3] = (char)('0' + units);
+                    cudaCrypt(raw, encrypted);
+                    if (same_characters(encrypted, target, 10)) {
+                        for (int i = 0; i < 5; i++) output[index*5+i] = raw[i];
+                        found[index] = 1;
+                        return;
+                    }
+                }
+            }
         }
     }
 }
@@ -57,8 +68,9 @@ static double wall_time(void) {
 
 int main(int argc, char **argv) {
     FILE *input = NULL, *output_file = NULL;
-    Encrypted *host_input = NULL, *device_input = NULL;
-    Plain *host_output = NULL, *device_output = NULL;
+    char *host_input = NULL, *device_input = NULL;
+    char *host_output = NULL, *device_output = NULL;
+    int *host_found = NULL, *device_found = NULL;
     cudaEvent_t start_event = NULL, finish_event = NULL;
     cudaDeviceProp properties;
     size_t count = 0, capacity = 0, line_number = 0, not_found = 0;
@@ -81,44 +93,49 @@ int main(int argc, char **argv) {
         }
         if (count == capacity) {
             size_t next = capacity ? capacity * 2 : 128;
-            if (next < capacity || next > SIZE_MAX / sizeof(Encrypted)) { failed = 1; goto cleanup; }
-            Encrypted *larger = (Encrypted *)realloc(host_input, next * sizeof(Encrypted));
+            if (next < capacity || next > SIZE_MAX / 11) { failed = 1; goto cleanup; }
+            char *larger = (char *)realloc(host_input, next * 11);
             if (!larger) { fprintf(stderr, "Host input allocation failed.\n"); failed = 1; goto cleanup; }
             host_input = larger; capacity = next;
         }
-        memcpy(host_input[count].text, line, 10); host_input[count++].text[10] = '\0';
+        memcpy(host_input+count*11, line, 10); host_input[count*11+10] = '\0'; count++;
     }
     if (ferror(input)) { perror("Reading passwords"); failed = 1; goto cleanup; }
     if (fclose(input)) { input = NULL; failed = 1; goto cleanup; } input = NULL;
-    if (!count || count > SIZE_MAX / sizeof(Plain)) { fprintf(stderr, "Password file must be nonempty and fit in memory.\n"); failed = 1; goto cleanup; }
-    host_output = (Plain *)malloc(count * sizeof(Plain));
-    if (!host_output) { failed = 1; goto cleanup; }
+    if (!count || count > SIZE_MAX / 5) { fprintf(stderr, "Password file must be nonempty and fit in memory.\n"); failed = 1; goto cleanup; }
+    host_output = (char *)malloc(count * 5);
+    host_found = (int *)malloc(count * sizeof(int));
+    if (!host_output || !host_found) { failed = 1; goto cleanup; }
     CUDA_TRY(cudaGetDeviceProperties(&properties, 0));
-    threads = properties.maxThreadsPerBlock < 256 ? properties.maxThreadsPerBlock : 256;
+    threads = count < 512 ? (unsigned int)((count+1)/2) : 256;
+    if (threads > (unsigned int)properties.maxThreadsPerBlock) threads = properties.maxThreadsPerBlock;
     if ((count - 1) / threads + 1 > (size_t)properties.maxGridSize[0]) { fprintf(stderr, "Input exceeds x-grid limit.\n"); failed = 1; goto cleanup; }
     blocks = (unsigned int)((count - 1) / threads + 1);
-    CUDA_TRY(cudaMalloc((void **)&device_input, count * sizeof(Encrypted)));
-    CUDA_TRY(cudaMalloc((void **)&device_output, count * sizeof(Plain)));
+    if (blocks < 2) blocks = 2;
+    CUDA_TRY(cudaMalloc((void **)&device_input, count * 11));
+    CUDA_TRY(cudaMalloc((void **)&device_output, count * 5));
+    CUDA_TRY(cudaMalloc((void **)&device_found, count * sizeof(int)));
     CUDA_TRY(cudaEventCreate(&start_event)); CUDA_TRY(cudaEventCreate(&finish_event));
     transfer_start = wall_time();
-    CUDA_TRY(cudaMemcpy(device_input, host_input, count * sizeof(Encrypted), cudaMemcpyHostToDevice));
+    CUDA_TRY(cudaMemcpy(device_input, host_input, count * 11, cudaMemcpyHostToDevice));
     CUDA_TRY(cudaEventRecord(start_event));
-    crackPasswords<<<blocks, threads>>>(device_input, device_output, count);
+    crackPasswords<<<blocks, threads>>>(device_input, device_output, device_found, count);
     CUDA_TRY(cudaGetLastError()); CUDA_TRY(cudaEventRecord(finish_event));
     CUDA_TRY(cudaEventSynchronize(finish_event));
     CUDA_TRY(cudaEventElapsedTime(&kernel_ms, start_event, finish_event));
-    CUDA_TRY(cudaMemcpy(host_output, device_output, count * sizeof(Plain), cudaMemcpyDeviceToHost));
+    CUDA_TRY(cudaMemcpy(host_output, device_output, count * 5, cudaMemcpyDeviceToHost));
+    CUDA_TRY(cudaMemcpy(host_found, device_found, count * sizeof(int), cudaMemcpyDeviceToHost));
     device_seconds = wall_time() - transfer_start;
     /* Re-encryption on the host detects transfer/indexing errors before writing. */
     for (size_t i = 0; i < count; i++) {
-        if (!host_output[i].text[0]) { not_found++; continue; }
-        host_output[i].text[4] = '\0'; cudaCrypt(host_output[i].text, verified);
-        if (strcmp(verified, host_input[i].text)) { fprintf(stderr, "Verification failed at line %zu.\n", i+1); failed = 1; goto cleanup; }
+        if (!host_found[i]) { not_found++; continue; }
+        host_output[i*5+4] = '\0'; cudaCrypt(host_output+i*5, verified);
+        if (strcmp(verified, host_input+i*11)) { fprintf(stderr, "Verification failed at line %zu.\n", i+1); failed = 1; goto cleanup; }
     }
     output_file = fopen("decrypted.txt", "w");
     if (!output_file) { perror("decrypted.txt"); failed = 1; goto cleanup; }
     for (size_t i = 0; i < count; i++)
-        if (fprintf(output_file, "%s\n", host_output[i].text[0] ? host_output[i].text : "NOT_FOUND") < 0) { failed = 1; goto cleanup; }
+        if (fprintf(output_file, "%s\n", host_found[i] ? host_output+i*5 : "NOT_FOUND") < 0) { failed = 1; goto cleanup; }
     if (fclose(output_file)) { output_file = NULL; failed = 1; goto cleanup; } output_file = NULL;
     printf("GPU: %s | Passwords: %zu | Blocks: %u | Threads/block: %u\n", properties.name, count, blocks, threads);
     printf("Kernel: %.3f ms | Transfers + kernel: %.6f s | Recovered: %zu | Not found: %zu\n", kernel_ms, device_seconds, count-not_found, not_found);
@@ -128,8 +145,9 @@ cleanup:
     if (output_file && fclose(output_file)) failed = 1;
     if (device_input && cudaFree(device_input) != cudaSuccess) failed = 1;
     if (device_output && cudaFree(device_output) != cudaSuccess) failed = 1;
+    if (device_found && cudaFree(device_found) != cudaSuccess) failed = 1;
     if (start_event && cudaEventDestroy(start_event) != cudaSuccess) failed = 1;
     if (finish_event && cudaEventDestroy(finish_event) != cudaSuccess) failed = 1;
-    free(host_input); free(host_output);
+    free(host_input); free(host_output); free(host_found);
     return failed ? 1 : not_found ? 2 : 0;
 }

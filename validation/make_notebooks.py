@@ -67,16 +67,7 @@ print("Output file: {output} | Lines:",len(output))
 print("\\n".join(output[:45]))
 '''))
     else:
-        cells.append(code('''from PIL import Image
-import matplotlib.pyplot as plt
-paths=sorted(Path('data').glob('*.png'))
-fig,axes=plt.subplots(len(paths),2,figsize=(12,3*len(paths)),squeeze=False)
-for row,path in enumerate(paths):
-    axes[row,0].imshow(Image.open(path)); axes[row,0].set_title(f'Input: {path.name}')
-    axes[row,1].imshow(Image.open(Path('edges')/f'sobel_{path.name}')); axes[row,1].set_title('CUDA Sobel output')
-    for axis in axes[row]: axis.axis('off')
-plt.tight_layout(); plt.show()
-'''))
+        cells.append(code('os.chdir(ROOT/"task4")\nfrom PIL import Image\nimport matplotlib.pyplot as plt\npath = Path(\'data/bird.png\')\nfig, axes = plt.subplots(2, 2, figsize=(10, 10))\nfig.suptitle(path.name)\nviews = [(path, \'Original Image\'),\n         (Path(\'edges\')/f\'gradient_x_{path.name}\', \'Gradient in X direction\'),\n         (Path(\'edges\')/f\'gradient_y_{path.name}\', \'Gradient in Y direction\'),\n         (Path(\'edges\')/f\'sobel_{path.name}\', \'Sobel Edge Detection\')]\nfor axis, (image_path, title) in zip(axes.flat, views):\n    axis.imshow(Image.open(image_path).convert(\'RGBA\')); axis.set_title(title); axis.axis(\'off\')\nplt.tight_layout()\nfig.savefig(ROOT/\'evidence/task4_bird_comparison.png\', dpi=160, bbox_inches=\'tight\')\nplt.show()\n'))
     cells += [markdown('## 4. Independent correctness checks and repeated timing trials\n\n'
                        'Validation checks normal and invalid inputs. Three measured trials follow '
                        'one excluded warm-up per configuration. Process wall time includes I/O and '

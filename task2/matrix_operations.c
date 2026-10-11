@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct { int rows, cols; double *value; } Matrix;
+typedef struct { int rows, cols; double **value; } Matrix;
 static size_t line_number;
 
 /* Read a complete physical line with the required standard fscanf file API.
@@ -41,11 +41,26 @@ static int dimension(char **cursor, int *result) {
     if (errno || p == end || n < 1 || n > INT_MAX) return 0;
     *result = (int)n; *cursor = spaces(end); return 1;
 }
+static void release_matrix(Matrix *matrix) {
+    if (matrix->value) {
+        for (int row = 0; row < matrix->rows; row++) free(matrix->value[row]);
+        free(matrix->value);
+    }
+    matrix->value = NULL;
+}
 static int allocate(Matrix *matrix, int rows, int cols) {
-    if ((size_t)rows > SIZE_MAX / (size_t)cols / sizeof(double)) return 0;
-    matrix->value = malloc((size_t)rows * (size_t)cols * sizeof(double));
+    if (rows < 1 || cols < 1 || (size_t)rows > SIZE_MAX / sizeof(double *) ||
+        (size_t)cols > SIZE_MAX / sizeof(double) ||
+        (size_t)rows > SIZE_MAX / (size_t)cols / sizeof(double)) return 0;
     matrix->rows = rows; matrix->cols = cols;
-    return matrix->value != NULL;
+    matrix->value = malloc((size_t)rows * sizeof(double *));
+    if (!matrix->value) return 0;
+    for (int row = 0; row < rows; row++) matrix->value[row] = NULL;
+    for (int row = 0; row < rows; row++) {
+        matrix->value[row] = malloc((size_t)cols * sizeof(double));
+        if (!matrix->value[row]) { release_matrix(matrix); return 0; }
+    }
+    return 1;
 }
 static int read_matrix(FILE *file, Matrix *matrix) {
     char *line = NULL, *p;
@@ -73,7 +88,7 @@ static int read_matrix(FILE *file, Matrix *matrix) {
             if (p == end || errno || !isfinite(number)) {
                 fprintf(stderr, "Line %zu, column %d: invalid finite number.\n", line_number, col+1); goto invalid;
             }
-            matrix->value[(size_t)row * cols + col] = number;
+            matrix->value[row][col] = number;
             p = spaces(end);
             if (col + 1 < cols) {
                 if (*p != ',') { fprintf(stderr, "Line %zu: expected %d comma-separated values.\n", line_number, cols); goto invalid; }
@@ -84,18 +99,13 @@ static int read_matrix(FILE *file, Matrix *matrix) {
     }
     return 1;
 invalid:
-    free(line); free(matrix->value); matrix->value = NULL; return -1;
-}
-static int max_dimension(const Matrix *a, const Matrix *b) {
-    int n = a->rows > a->cols ? a->rows : a->cols;
-    if (b) { if (b->rows > n) n = b->rows; if (b->cols > n) n = b->cols; }
-    return n;
+    free(line); release_matrix(matrix); return -1;
 }
 static int write_matrix(FILE *file, const char *name, const Matrix *matrix) {
     if (fprintf(file, "%s - %d,%d\n", name, matrix->rows, matrix->cols) < 0) return 0;
     for (int row = 0; row < matrix->rows; row++) {
         for (int col = 0; col < matrix->cols; col++) {
-            double x = matrix->value[(size_t)row * matrix->cols + col];
+            double x = matrix->value[row][col];
             if (col && fprintf(file, ",") < 0) return 0;
             if (isnan(x)) { if (fprintf(file, "NaN") < 0) return 0; }
             else if (fprintf(file, "%.17g", x) < 0) return 0;
@@ -115,31 +125,37 @@ static int operation(FILE *output, const Matrix *a, const Matrix *b, int kind, i
     int cols = kind == 4 || kind == 5 ? source->rows : kind == 6 ? b->cols : a->cols;
     Matrix result = {0};
     if (!allocate(&result, rows, cols)) { fprintf(stderr, "Result allocation failed.\n"); return 0; }
-    int limit = max_dimension(source, kind < 4 || kind == 6 ? b : NULL);
-    int threads = requested < limit ? requested : limit;
+    int threads = requested < rows ? requested : rows;
+    int actual = 1;
     double start = omp_get_wtime();
-    /* Each collapsed iteration owns one output cell. The dot-product sum is
-     * private to that iteration, so it must not be shared across threads. */
-    #pragma omp parallel for collapse(2) num_threads(threads) default(none) shared(a,b,source,result,rows,cols,kind)
-    for (int row = 0; row < rows; row++) for (int col = 0; col < cols; col++) {
-        size_t index = (size_t)row * cols + col;
-        double value = 0.0;
-        if (kind == 4 || kind == 5) value = source->value[(size_t)col * source->cols + row];
-        else if (kind == 6) {
-            for (int k = 0; k < a->cols; k++) value += a->value[(size_t)row*a->cols+k] * b->value[(size_t)k*b->cols+col];
-        } else {
-            double av = a->value[index], bv = b->value[index];
-            if (kind == 0) value = av + bv;
-            if (kind == 1) value = av - bv;
-            if (kind == 2) value = av * bv;
-            if (kind == 3) value = bv == 0.0 ? NAN : av / bv;
+    #pragma omp parallel num_threads(threads) default(none) shared(a,b,source,result,rows,cols,kind,actual)
+    {
+        #pragma omp single
+        actual = omp_get_num_threads();
+        #pragma omp for schedule(static)
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                double value = 0.0;
+                if (kind == 4 || kind == 5) value = source->value[col][row];
+                else if (kind == 6) {
+                    for (int k = 0; k < a->cols; k++)
+                        value += a->value[row][k] * b->value[k][col];
+                } else {
+                    double av = a->value[row][col], bv = b->value[row][col];
+                    if (kind == 0) value = av + bv;
+                    if (kind == 1) value = av - bv;
+                    if (kind == 2) value = av * bv;
+                    if (kind == 3) value = bv == 0.0 ? NAN : av / bv;
+                }
+                result.value[row][col] = value;
+            }
         }
-        result.value[index] = value;
     }
     double elapsed = omp_get_wtime() - start; *compute += elapsed;
-    printf("  %s: %d x %d | capped team request %d | %.6f s\n", names[kind], rows, cols, threads, elapsed);
+    printf("  %s: %d x %d | requested %d capped %d actual %d | %.6f s\n",
+           names[kind], rows, cols, requested, threads, actual, elapsed);
     int ok = write_matrix(output, names[kind], &result);
-    free(result.value); return ok;
+    release_matrix(&result); return ok;
 }
 int main(int argc, char **argv) {
     if (argc != 3) { fprintf(stderr, "Usage: %s input.txt threads\n", argv[0]); return 1; }
@@ -152,9 +168,9 @@ int main(int argc, char **argv) {
         Matrix matrix = {0}; status = read_matrix(input, &matrix);
         if (status == 0) break;
         if (status < 0) { failed = 1; break; }
-        if (count == SIZE_MAX / sizeof(Matrix)) { free(matrix.value); failed = 1; break; }
+        if (count == SIZE_MAX / sizeof(Matrix)) { release_matrix(&matrix); failed = 1; break; }
         Matrix *larger = realloc(matrices, (count+1) * sizeof(Matrix));
-        if (!larger) { free(matrix.value); failed = 1; break; }
+        if (!larger) { release_matrix(&matrix); failed = 1; break; }
         matrices = larger; matrices[count++] = matrix;
     }
     if (fclose(input)) failed = 1;
@@ -169,7 +185,7 @@ int main(int argc, char **argv) {
         if (failed) break;
     }
     if (output && fclose(output)) failed = 1;
-    for (size_t i = 0; i < count; i++) free(matrices[i].value);
+    for (size_t i = 0; i < count; i++) release_matrix(&matrices[i]);
     free(matrices);
     if (!failed) printf("Pairs: %zu | Compute: %.6f s | Output: results.txt\n", count/2, compute);
     else fprintf(stderr, "Matrix processing failed; no verified output.\n");

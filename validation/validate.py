@@ -131,7 +131,7 @@ def passwords(directory):
 def sobel_reference(image):
     import numpy as np
     pixels = np.asarray(image.convert('RGBA'),dtype=np.int32)
-    gray = pixels[:,:,:3].sum(axis=2)//3
+    gray = (30*pixels[:,:,0]+59*pixels[:,:,1]+11*pixels[:,:,2])//100
     padded = np.pad(gray,1,mode='constant'); h,w = gray.shape
     gx = np.zeros((h,w),dtype=np.int32); gy = gx.copy()
     kx = [[-1,0,1],[-2,0,2],[-1,0,1]]; ky = [[-1,-2,-1],[0,0,0],[1,2,1]]
@@ -139,11 +139,12 @@ def sobel_reference(image):
         for x in range(3):
             window = padded[y:y+h,x:x+w]
             gx += kx[y][x]*window; gy += ky[y][x]*window
-    edge = np.minimum(255,np.floor(np.sqrt(gx.astype(float)**2+gy.astype(float)**2)+0.5)).astype(np.uint8)
+    edge = np.minimum(255,np.floor(np.sqrt(gx.astype(float)**2+gy.astype(float)**2))).astype(np.uint8)
     outputs = {}
     for prefix, values in [('sobel_', edge), ('gradient_x_', np.minimum(255,np.abs(gx))), ('gradient_y_', np.minimum(255,np.abs(gy)))]:
         output = np.asarray(image.convert('RGBA')).copy()
         output[:,:,:3] = values[:,:,None]
+        if prefix != 'sobel_': output[:,:,3] = 255
         outputs[prefix] = output
     return outputs
 
