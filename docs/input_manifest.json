@@ -8,8 +8,8 @@
     "sha256": "8b37ae49bfd736db461e68d72b1479e27ec961dc92c84f1437937483f5874721"
   },
   "task3/data/passwords.txt": {
-    "bytes": 120000,
-    "sha256": "09eeac2dd37c64ed24a2b849c79a7292f8660c9b3bbe0075bd0cf213d2e5e132"
+    "bytes": 110000,
+    "sha256": "fa8f86d46e54d1f156fe9d805c05559d96c24cf59041c6c173c685b7c705b829"
   },
   "task4/data/4x4.png": {
     "bytes": 140,
@@ -36,7 +36,7 @@
     "sha256": "c2153f77e11087fcb078ae38527fa83bef29791e3700e30cc87fec4405a66d0f"
   },
   "validation/passwords_expected.txt": {
-    "bytes": 60000,
-    "sha256": "7c11f97136d0c8be89b3ba0c4335ed064336ee7e3eafc153ebc12c79c7b7f7b3"
+    "bytes": 50000,
+    "sha256": "4d0e08d9430faa089e78e8c648fb5888406307ce00f96005484d0e76aefa6ea6"
   }
 }
