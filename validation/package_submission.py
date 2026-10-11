@@ -14,6 +14,7 @@ for number in range(1, 5):
               root / "docs/report_content.md"]
     paths += list((root / "validation").glob("*.py"))
     paths += list((root / "validation").glob("*.txt"))
+    paths += list((root / "report").glob("*.docx"))
     paths += list((root / "evidence").glob(f"task{number}_*"))
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(set(paths)):
