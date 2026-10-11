@@ -10,7 +10,8 @@ for number in range(1, 5):
     paths = list((root / f"task{number}").rglob("*"))
     paths += [root / "Makefile", root / "README.md",
               root / "notebooks" / f"Task_{number:02d}.ipynb",
-              root / "docs/input_manifest.json", root / "docs/viva_guide.md"]
+              root / "docs/input_manifest.json", root / "docs/viva_guide.md",
+              root / "docs/report_content.md"]
     paths += list((root / "validation").glob("*.py"))
     paths += list((root / "validation").glob("*.txt"))
     paths += list((root / "evidence").glob(f"task{number}_*"))
