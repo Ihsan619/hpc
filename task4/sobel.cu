@@ -13,7 +13,11 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
+/* LodePNG is compiled as C; nvcc compiles this translation unit as C++. */
+#define LODEPNG_NO_COMPILE_CPP
+extern "C" {
 #include "lodepng.h"
+}
 
 __device__ int grayscale(const unsigned char *image, int x, int y, unsigned int width, unsigned int height) {
     if (x < 0 || y < 0 || (unsigned int)x >= width || (unsigned int)y >= height) return 0;
