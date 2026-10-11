@@ -31,15 +31,7 @@ def main():
         '2,2\n1,2\n3,4\n\n2,2\n0,2\n-3,4\n\n'
         '2,3\n1,2,3\n4,5,6\n\n3,2\n7,8\n9,10\n11,12\n\n'
         '1,3\n2,3,4\n\n2,1\n5\n6\n', encoding='ascii', newline='\n')
-    image = Image.new('RGBA', (512,384), (25,40,60,255))
-    draw = ImageDraw.Draw(image)
-    draw.rectangle((40,50,470,335), fill=(190,175,150,255))
-    for x in range(70,450,60):
-        for y in range(85,310,55):
-            draw.rectangle((x,y,x+30,y+30), fill=(35,70,110,255))
-    draw.polygon([(15,50),(255,10),(495,50)], fill=(115,90,75,255))
-    draw.line((0,370,511,345), fill=(230,230,230,255), width=5)
-    image.save(ROOT/'task4/data/building.png')
+    # bird.png is the user-supplied photograph; do not regenerate or overwrite it.
     for name,size in [('tiny',(1,1)),('thin',(1,7)),('partial_block',(17,19))]:
         image = Image.new('RGBA', size)
         image.putdata([((x*41)%256,(y*61)%256,((x+y)*17)%256,(x*13+y*23)%256)

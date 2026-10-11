@@ -19,10 +19,6 @@
     "bytes": 148,
     "sha256": "82121ab5817eff00375e7bfed48b94d9d186321a8320bc7d79910744f3fffa9c"
   },
-  "task4/data/building.png": {
-    "bytes": 2366,
-    "sha256": "c9b77b4d36a3bab9e7f0251ad8ccb393a0c8ef579b7fa450602db71a1d526fa0"
-  },
   "task4/data/partial_block.png": {
     "bytes": 136,
     "sha256": "4944eba0193018a258704a50921aa5e3f908e28c0e4630e1609667804f1bd954"
@@ -38,5 +34,9 @@
   "validation/passwords_expected.txt": {
     "bytes": 50000,
     "sha256": "4d0e08d9430faa089e78e8c648fb5888406307ce00f96005484d0e76aefa6ea6"
+  },
+  "task4/data/bird.png": {
+    "bytes": 41108,
+    "sha256": "9674498d623e09108b140949150f55a401bdcdbe454e4e37dfa0c8aa983deda5"
   }
 }

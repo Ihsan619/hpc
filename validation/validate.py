@@ -140,9 +140,12 @@ def sobel_reference(image):
             window = padded[y:y+h,x:x+w]
             gx += kx[y][x]*window; gy += ky[y][x]*window
     edge = np.minimum(255,np.floor(np.sqrt(gx.astype(float)**2+gy.astype(float)**2)+0.5)).astype(np.uint8)
-    output = np.asarray(image.convert('RGBA')).copy()
-    output[:,:,:3] = edge[:,:,None]
-    return output
+    outputs = {}
+    for prefix, values in [('sobel_', edge), ('gradient_x_', np.minimum(255,np.abs(gx))), ('gradient_y_', np.minimum(255,np.abs(gy)))]:
+        output = np.asarray(image.convert('RGBA')).copy()
+        output[:,:,:3] = values[:,:,None]
+        outputs[prefix] = output
+    return outputs
 
 def images(directory):
     from PIL import Image
@@ -152,8 +155,9 @@ def images(directory):
     run('task4/sobel',[output,*paths],directory)
     for path in paths:
         with Image.open(path) as image: expected = sobel_reference(image)
-        with Image.open(output/f'sobel_{path.name}') as image: actual = np.asarray(image.convert('RGBA'))
-        assert np.array_equal(actual,expected), f'Pixel mismatch: {path.name}'
+        for prefix, reference in expected.items():
+            with Image.open(output/f'{prefix}{path.name}') as image: actual = np.asarray(image.convert('RGBA'))
+            assert np.array_equal(actual,reference), f'Pixel mismatch: {prefix}{path.name}'
     run('task4/sobel',[output,directory/'missing.png'],directory,1)
     run('task4/sobel',[output,paths[0],paths[0]],directory,1)
     bad = directory/'broken.png'; bad.write_bytes(b'not a PNG')
@@ -176,7 +180,7 @@ def benchmark(task,directory):
     elif task=='task3':
         configs = [('task3/password_cracking',[ROOT/'task3/data/passwords.txt'],None)]
     else:
-        configs = [('task4/sobel',[directory/'bench_edges',ROOT/'task4/data/building.png'],None)]
+        configs = [('task4/sobel',[directory/'bench_edges',ROOT/'task4/data/bird.png'],None)]
     for exe,args,threads in configs:
         run(exe,args,directory) # warm-up, excluded from reported trials
         for trial in range(3):

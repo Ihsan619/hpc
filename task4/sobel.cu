@@ -40,6 +40,15 @@ __global__ void sobelFilter(const unsigned char *input, unsigned char *output, u
     unsigned char edge = (unsigned char)(magnitude > 255 ? 255 : magnitude);
     output[pixel*4] = edge; output[pixel*4+1] = edge; output[pixel*4+2] = edge;
     output[pixel*4+3] = input[pixel*4+3];
+    /* Three RGBA planes: combined magnitude, |Gx| and |Gy|. */
+    size_t plane_bytes = (size_t)width * height * 4;
+    int gradients[2] = {abs(gx), abs(gy)};
+    for (int direction = 0; direction < 2; direction++) {
+        size_t index = (direction+1)*plane_bytes + pixel*4;
+        unsigned char value = (unsigned char)(gradients[direction] > 255 ? 255 : gradients[direction]);
+        output[index] = output[index+1] = output[index+2] = value;
+        output[index+3] = input[pixel*4+3];
+    }
 }
 static const char *basename_of(const char *path) {
     const char *base = path;
@@ -57,6 +66,7 @@ static int process_image(const char *path, const char *directory) {
     unsigned char *host_input = NULL, *host_output = NULL, *device_input = NULL, *device_output = NULL;
     unsigned int width = 0, height = 0, png_error = 0, threads = 0, blocks = 0;
     size_t pixels = 0, bytes = 0, name_size = 0;
+    const char *prefixes[3] = {"sobel_", "gradient_x_", "gradient_y_"};
     char *output_name = NULL;
     cudaDeviceProp properties;
     cudaEvent_t start_event = NULL, finish_event = NULL;
@@ -65,12 +75,12 @@ static int process_image(const char *path, const char *directory) {
     int failed = 0;
     png_error = lodepng_decode32_file(&host_input, &width, &height, path);
     if (png_error) { fprintf(stderr, "%s: PNG decode %u (%s)\n", path, png_error, lodepng_error_text(png_error)); failed = 1; goto cleanup; }
-    if (!width || !height || width >= INT_MAX || height >= INT_MAX || (size_t)width > SIZE_MAX / height / 4) {
+    if (!width || !height || width >= INT_MAX || height >= INT_MAX || (size_t)width > SIZE_MAX / height / 12) {
         fprintf(stderr, "%s: image dimensions exceed supported size.\n", path); failed = 1; goto cleanup;
     }
     pixels = (size_t)width * height; bytes = pixels * 4;
-    host_output = (unsigned char *)malloc(bytes);
-    name_size = strlen(directory) + strlen(basename_of(path)) + 9;
+    host_output = (unsigned char *)malloc(bytes*3);
+    name_size = strlen(directory) + strlen(basename_of(path)) + 16;
     output_name = (char *)malloc(name_size);
     if (!host_output || !output_name) { fprintf(stderr, "Host allocation failed.\n"); failed = 1; goto cleanup; }
     snprintf(output_name, name_size, "%s/sobel_%s", directory, basename_of(path));
@@ -78,7 +88,7 @@ static int process_image(const char *path, const char *directory) {
     threads = properties.maxThreadsPerBlock < 256 ? properties.maxThreadsPerBlock : 256;
     if ((pixels-1)/threads+1 > (size_t)properties.maxGridSize[0]) { fprintf(stderr, "Image exceeds x-grid limit.\n"); failed = 1; goto cleanup; }
     blocks = (unsigned int)((pixels-1)/threads+1);
-    CUDA_TRY(cudaMalloc((void **)&device_input, bytes)); CUDA_TRY(cudaMalloc((void **)&device_output, bytes));
+    CUDA_TRY(cudaMalloc((void **)&device_input, bytes)); CUDA_TRY(cudaMalloc((void **)&device_output, bytes*3));
     CUDA_TRY(cudaEventCreate(&start_event)); CUDA_TRY(cudaEventCreate(&finish_event));
     transfer_start = wall_time();
     CUDA_TRY(cudaMemcpy(device_input, host_input, bytes, cudaMemcpyHostToDevice));
@@ -87,13 +97,17 @@ static int process_image(const char *path, const char *directory) {
     CUDA_TRY(cudaGetLastError()); CUDA_TRY(cudaEventRecord(finish_event));
     CUDA_TRY(cudaEventSynchronize(finish_event));
     CUDA_TRY(cudaEventElapsedTime(&kernel_ms, start_event, finish_event));
-    CUDA_TRY(cudaMemcpy(host_output, device_output, bytes, cudaMemcpyDeviceToHost));
+    CUDA_TRY(cudaMemcpy(host_output, device_output, bytes*3, cudaMemcpyDeviceToHost));
     device_seconds = wall_time() - transfer_start;
-    png_error = lodepng_encode32_file(output_name, host_output, width, height);
-    if (png_error) { fprintf(stderr, "PNG encode %u (%s)\n", png_error, lodepng_error_text(png_error)); failed = 1; goto cleanup; }
+    for (int plane = 0; plane < 3; plane++) {
+        snprintf(output_name, name_size, "%s/%s%s", directory, prefixes[plane], basename_of(path));
+        png_error = lodepng_encode32_file(output_name, host_output+plane*bytes, width, height);
+        if (png_error) { fprintf(stderr, "PNG encode %u (%s)\n", png_error, lodepng_error_text(png_error)); failed = 1; goto cleanup; }
+    }
     printf("%s: %u x %u | Blocks: %u | Threads/block: %u\n", basename_of(path), width, height, blocks, threads);
     printf("  GPU: %s | Kernel: %.3f ms | Transfers + kernel: %.6f s | Decode-to-encode: %.6f s\n", properties.name, kernel_ms, device_seconds, wall_time()-start);
-    printf("  Output: %s\n", output_name);
+    for (int plane = 0; plane < 3; plane++)
+        printf("  Output: %s/%s%s\n", directory, prefixes[plane], basename_of(path));
 cleanup:
     if (device_input && cudaFree(device_input) != cudaSuccess) failed = 1;
     if (device_output && cudaFree(device_output) != cudaSuccess) failed = 1;

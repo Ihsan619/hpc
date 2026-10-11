@@ -7,7 +7,7 @@ Four standalone implementations based on the supplied module materials:
 | Word occurrence counting | task1/word_count.c | C, POSIX threads | result.txt |
 | Matrix operations | task2/matrix_operations.c | C, OpenMP | results.txt |
 | Password cracking | task3/password_cracking.cu | CUDA | decrypted.txt |
-| Sobel edge detection | task4/sobel.cu | CUDA, LodePNG | sobel_<input>.png |
+| Sobel edge detection | task4/sobel.cu | CUDA, LodePNG | sobel_<input>.png, gradient_x_<input>.png, gradient_y_<input>.png |
 
 The brief provides example output names and does not prescribe source filenames.
 The supplied datasets keep their original names. Each task has a separate Colab
@@ -27,7 +27,7 @@ make cuda
 cd task3
 ./password_cracking data/passwords.txt
 cd ../task4
-./sobel edges data/4x4.png data/6x4.png data/building.png
+./sobel edges data/4x4.png data/6x4.png data/bird.png
 ```
 
 CUDA needs an NVIDIA GPU and nvcc. The default architecture is the GPU visible
@@ -81,3 +81,5 @@ the brief. Include Colab links in the report, separate .cu files, actual
 outputs, and four real screen recordings in evidence/. Review all source
 and design decisions before the viva and follow the university's rules for
 acknowledging assistance and external code.
+
+Task 4 uses the supplied bird photograph. Each CUDA thread writes the combined magnitude and clipped absolute X/Y gradients into three independent RGBA planes. The notebook displays the original and all three outputs in a 2 by 2 comparison.

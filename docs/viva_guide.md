@@ -135,3 +135,5 @@ actual evidence rather than assuming that more threads always help.
 6. Apply Sobel to a 1x1 image with zero padding and explain why Gx=Gy=0.
 7. Explain which allocations must be freed after a failed CUDA copy.
 8. Identify one measured limitation and one justified future improvement.
+
+Task 4 now also saves |Gx| and |Gy|, each clipped to 255, alongside the rounded combined magnitude. Signed gradients are used to calculate the magnitude before clipping. Three output planes share the same input and preserve alpha. The bird image is 500 by 500: 250,000 pixels require 977 blocks of 256 threads; the final 112 threads return at the guard.
